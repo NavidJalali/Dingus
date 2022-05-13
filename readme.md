@@ -1,5 +1,5 @@
 # 🥜 Dingus
-Dingus is a lightweight HTTP client for Scala build on top of `java.net.http`
+Dingus is a lightweight HTTP client for Scala built on top of `java.net.http`.
 
 ### Compatibility
 Only works with `JDK 11+`.
