@@ -1,12 +1,12 @@
 package io.navidjalali.dingus
 
-import zio.{Semaphore, ZIO, ZLayer}
+import zio.{Duration, Semaphore, ZIO, ZLayer}
 
 import java.io.UncheckedIOException
-import java.net.http.{HttpClient, HttpResponse}
+import java.net.http.{HttpClient => JHttpClient, HttpResponse}
 import javax.net.ssl.{SSLContext, SSLParameters}
 
-sealed trait Client { self =>
+sealed trait HttpClient { self =>
 
   val semaphore: Semaphore
 
@@ -22,34 +22,35 @@ sealed trait Client { self =>
         .map(Response.fromJava)
     )
 
-  val asJava: HttpClient
+  val asJava: JHttpClient
 }
 
-object Client {
+object HttpClient {
 
-  def request(request: Request): ZIO[Client, Throwable, Response] =
-    ZIO.environmentWithZIO[Client](_.get.request(request))
+  def request(request: Request): ZIO[HttpClient, Throwable, Response] =
+    ZIO.environmentWithZIO[HttpClient](_.get.request(request))
 
   val live =
     ZLayer.fromZIO {
       for {
-        config  <- ZIO.environmentWith[ClientConfiguration](_.get)
+        config  <- ZIO.environmentWith[HttpClientConfiguration](_.get)
         permits <- Semaphore.make(config.poolSize)
         client <- ZIO.attempt {
-                    new Client {
+                    new HttpClient {
                       override val semaphore: Semaphore = permits
-                      override val asJava: HttpClient =
-                        HttpClient
+                      override val asJava: JHttpClient =
+                        JHttpClient
                           .newBuilder()
                           .sslContext(SSLContext.getDefault)
                           .sslParameters(new SSLParameters)
                           .executor(config.executor)
-                          .connectTimeout(config.connectionTimeout)
+                          .connectTimeout(Duration(config.connectionTimeout.length, config.connectionTimeout.unit))
+                          .followRedirects(config.followRedirects.asJava)
                           .build()
                     }
                   }.refineToOrDie[UncheckedIOException]
       } yield client
     }
 
-  val default = ClientConfiguration.default >>> live
+  val default = HttpClientConfiguration.default >>> live
 }

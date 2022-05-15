@@ -2,20 +2,19 @@ package io.navidjalali.dingus
 
 import zio.ZLayer
 
-import java.net.http.HttpClient
-import java.time.Duration
 import java.util.concurrent.Executor
 import javax.net.ssl.{SSLContext, SSLParameters}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
-final case class ClientConfiguration(
+final case class HttpClientConfiguration(
   poolSize: Int = 128,
   executor: Executor = zio.Runtime.defaultExecutor.asJava,
-  connectionTimeout: Duration = Duration.ofSeconds(10),
-  redirect: HttpClient.Redirect = HttpClient.Redirect.ALWAYS,
+  connectionTimeout: FiniteDuration = 10.seconds,
+  followRedirects: RedirectionOptions = RedirectionOptions.FollowIfSafe,
   sslContext: SSLContext = SSLContext.getDefault,
   sslParameters: SSLParameters = SSLContext.getDefault.getDefaultSSLParameters
 )
 
-object ClientConfiguration {
-  val default = ZLayer.succeed(ClientConfiguration())
+object HttpClientConfiguration {
+  val default = ZLayer.succeed(HttpClientConfiguration())
 }
