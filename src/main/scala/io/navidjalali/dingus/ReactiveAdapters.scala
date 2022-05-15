@@ -1,7 +1,7 @@
 package io.navidjalali.dingus
 
 import zio.{Cause, Chunk, ChunkBuilder, Exit, Promise, Queue, Ref, Scope, URIO, ZIO}
-import zio.stream.ZStream
+import zio.stream.{ZSink, ZStream}
 import zio.stream.ZStream.Pull
 
 import java.nio.ByteBuffer
@@ -10,7 +10,7 @@ import java.util.concurrent.Flow.{Publisher, Subscriber, Subscription}
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
-object ReactiveConvertors {
+object ReactiveAdapters {
   def toStream(publisher: Publisher[util.List[ByteBuffer]], bufferSize: Int): ZStream[Any, Throwable, Byte] = {
     val pullOrFail =
       for {
@@ -30,6 +30,64 @@ object ReactiveConvertors {
     val pull = pullOrFail.catchAll(e => ZIO.succeed(ZIO.fail(Some(e))))
     ZStream.fromPull(pull).flatMap(ZStream.fromIterable(_))
   }
+
+  def toPublisher[R, E <: Throwable, O](stream: ZStream[R, E, O]): ZIO[R, Nothing, Publisher[O]] =
+    ZIO.runtime.map { runtime =>
+      val publisher: Publisher[O] = subscriber => {
+        if (subscriber == null) {
+          throw new NullPointerException("Subscriber cannot be null.")
+        } else {
+          runtime.unsafeRunAsync(
+            for {
+              demand <- Queue.unbounded[Long]
+              _      <- ZIO.succeed(subscriber.onSubscribe(createSubscription(subscriber, demand, runtime)))
+              _ <- stream
+                     .run(demandUnfoldSink(subscriber, demand))
+                     .catchAll(e => ZIO.succeed(subscriber.onError(e)))
+                     .forkDaemon
+            } yield ()
+          )
+        }
+      }
+      publisher
+    }
+
+  def demandUnfoldSink[I](
+    subscriber: Subscriber[_ >: I],
+    demand: Queue[Long]
+  ): ZSink[Any, Nothing, I, I, Unit] =
+    ZSink
+      .foldChunksZIO[Any, Nothing, I, Long](0L)(_ >= 0L) { (bufferedDemand, chunk) =>
+        ZIO
+          .iterate((chunk, bufferedDemand))(!_._1.isEmpty) { case (chunk, bufferedDemand) =>
+            demand.isShutdown.flatMap {
+              case true => ZIO.succeed((Chunk.empty, -1))
+              case false =>
+                if (chunk.size.toLong <= bufferedDemand)
+                  ZIO
+                    .foreach(chunk)(a => ZIO.succeed(subscriber.onNext(a)))
+                    .as((Chunk.empty, bufferedDemand - chunk.size.toLong))
+                else
+                  ZIO.foreach(chunk.take(bufferedDemand.toInt))(a => ZIO.succeed(subscriber.onNext(a))) *>
+                    demand.take.map((chunk.drop(bufferedDemand.toInt), _))
+            }
+          }
+          .map(_._2)
+      }
+      .mapZIO(_ => demand.isShutdown.flatMap(is => ZIO.succeed(subscriber.onComplete()).when(!is).unit))
+
+  def createSubscription[A](
+    subscriber: Subscriber[_ >: A],
+    demand: Queue[Long],
+    runtime: zio.Runtime[_]
+  ): Subscription =
+    new Subscription {
+      override def request(n: Long): Unit = {
+        if (n <= 0) subscriber.onError(new IllegalArgumentException("non-positive subscription request"))
+        runtime.unsafeRunAsync(demand.offer(n).unit)
+      }
+      override def cancel(): Unit = runtime.unsafeRun(demand.shutdown)
+    }
 
   private def process[R, A](
     q: Queue[Exit[Option[Throwable], A]],

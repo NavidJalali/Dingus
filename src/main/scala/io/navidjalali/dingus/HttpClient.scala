@@ -3,23 +3,26 @@ package io.navidjalali.dingus
 import zio.{Duration, Semaphore, ZIO, ZLayer}
 
 import java.io.UncheckedIOException
-import java.net.http.{HttpClient => JHttpClient, HttpResponse}
+import java.net.http.{HttpClient => JHttpClient, HttpResponse => JHttpResponse}
 import javax.net.ssl.{SSLContext, SSLParameters}
 
 sealed trait HttpClient { self =>
 
   val semaphore: Semaphore
 
-  def request(request: Request): ZIO[Any, Throwable, Response] =
+  def request(request: HttpRequest): ZIO[Any, Throwable, HttpResponse] =
     semaphore.withPermit(
-      ZIO
-        .fromCompletableFuture(
-          self.asJava.sendAsync(
-            request.asJava,
-            HttpResponse.BodyHandlers.ofPublisher()
-          )
-        )
-        .map(Response.fromJava)
+      for {
+        req <- request.asJava
+        response <- ZIO
+                      .fromCompletableFuture(
+                        self.asJava.sendAsync(
+                          req,
+                          JHttpResponse.BodyHandlers.ofPublisher()
+                        )
+                      )
+                      .map(HttpResponse.fromJava)
+      } yield response
     )
 
   val asJava: JHttpClient
@@ -27,7 +30,7 @@ sealed trait HttpClient { self =>
 
 object HttpClient {
 
-  def request(request: Request): ZIO[HttpClient, Throwable, Response] =
+  def request(request: HttpRequest): ZIO[HttpClient, Throwable, HttpResponse] =
     ZIO.environmentWithZIO[HttpClient](_.get.request(request))
 
   val live =

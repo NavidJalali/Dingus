@@ -59,6 +59,7 @@ object Header {
   def contentDisposition(value: String): Header            = Header("Content-Disposition", value)
   def contentLength(value: Long): Header                   = Header("Content-Length", value.toString)
   def contentType(value: String): Header                   = Header("Content-Type", value)
+  def contentTypeJson: Header                              = Header("Content-Type", "application/json")
   def contentEncoding(value: String): Header               = Header("Content-Encoding", value)
   def contentLanguage(value: String): Header               = Header("Content-Language", value)
   def contentLocation(value: String): Header               = Header("Content-Location", value)

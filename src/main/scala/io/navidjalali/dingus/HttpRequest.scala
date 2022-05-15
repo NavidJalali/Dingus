@@ -1,28 +1,30 @@
 package io.navidjalali.dingus
 
-import java.net.http.HttpRequest
+import zio.{UIO, ZIO}
+
+import java.net.http.{HttpRequest => JHttpRequest}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.jdk.DurationConverters.ScalaDurationOps
 
-sealed trait Request {
+sealed trait HttpRequest {
   val url: URL
   val method: HttpMethod
   val headers: Set[Header]
-  def asJava: HttpRequest
+  def asJava: UIO[JHttpRequest]
 }
 
-object Request {
+object HttpRequest {
   final case class GET(
     url: URL,
     headers: Set[Header] = Set.empty,
     version: HttpVersion = HttpVersion.`1.1`,
     timeout: FiniteDuration = 10.seconds
-  ) extends Request {
+  ) extends HttpRequest {
     override val method: HttpMethod = HttpMethod.GET
 
-    override def asJava: HttpRequest = {
+    override def asJava: UIO[JHttpRequest] = ZIO.succeed({
       var builder =
-        HttpRequest
+        JHttpRequest
           .newBuilder()
           .uri(url.asJava)
           .GET()
@@ -34,7 +36,7 @@ object Request {
       }
 
       builder.build()
-    }
+    })
   }
 
   final case class POST(
@@ -43,15 +45,15 @@ object Request {
     headers: Set[Header] = Set.empty,
     version: HttpVersion = HttpVersion.`1.1`,
     timeout: FiniteDuration = 10.seconds
-  ) extends Request {
+  ) extends HttpRequest {
     override val method: HttpMethod = HttpMethod.POST
 
-    override def asJava: HttpRequest = {
+    override def asJava: UIO[JHttpRequest] = body.toJava.map { requestBody =>
       var builder =
-        HttpRequest
+        JHttpRequest
           .newBuilder()
           .uri(url.asJava)
-          .POST(body.bodyPublisher)
+          .POST(requestBody)
           .timeout(timeout.toJava)
           .version(version.asJava)
 
@@ -69,15 +71,15 @@ object Request {
     headers: Set[Header] = Set.empty,
     version: HttpVersion = HttpVersion.`1.1`,
     timeout: FiniteDuration = 10.seconds
-  ) extends Request {
+  ) extends HttpRequest {
     override val method: HttpMethod = HttpMethod.PUT
 
-    override def asJava: HttpRequest = {
+    override def asJava: UIO[JHttpRequest] = body.toJava.map { requestBody =>
       var builder =
-        HttpRequest
+        JHttpRequest
           .newBuilder()
           .uri(url.asJava)
-          .PUT(body.bodyPublisher)
+          .PUT(requestBody)
           .timeout(timeout.toJava)
           .version(version.asJava)
 
