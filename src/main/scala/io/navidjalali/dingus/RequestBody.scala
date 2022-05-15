@@ -1,6 +1,6 @@
 package io.navidjalali.dingus
 
-import zio.{UIO, ZIO}
+import zio.{Chunk, UIO, ZIO}
 import zio.stream.ZStream
 
 import java.net.http.HttpRequest.{BodyPublisher, BodyPublishers}
@@ -28,6 +28,14 @@ object RequestBody {
 
   def fromArray(body: Array[Byte]): RequestBody =
     Pure(BodyPublishers.ofByteArray(body))
+
+  def fromChunk(chunk: Chunk[Byte]): RequestBody = {
+    Pure(BodyPublishers.ofByteArray(chunk.toArray))
+  }
+
+  def fromIterable(body: Iterable[Byte]): RequestBody = {
+    Pure(BodyPublishers.ofByteArray(body.toArray))
+  }
 
   def fromBodyPublisher(body: BodyPublisher): RequestBody =
     Pure(body)

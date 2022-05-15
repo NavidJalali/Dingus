@@ -52,6 +52,15 @@ sealed trait HttpClient { self =>
   ): ZIO[Any, Throwable, HttpResponse] =
     self.request(HttpRequest.put(url, body, headers, version, timeout))
 
+  def patch(
+    url: URL,
+    body: RequestBody,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ): ZIO[Any, Throwable, HttpResponse] =
+    self.request(HttpRequest.patch(url, body, headers, version, timeout))
+
   def delete(
     url: URL,
     headers: Set[Header] = Set.empty,
@@ -109,6 +118,15 @@ object HttpClient {
     timeout: FiniteDuration = 10.seconds
   ): ZIO[HttpClient, Throwable, HttpResponse] =
     ZIO.environmentWithZIO[HttpClient](_.get.put(url, body, headers, version, timeout))
+
+  def patch(
+    url: URL,
+    body: RequestBody,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ): ZIO[HttpClient, Throwable, HttpResponse] =
+    ZIO.environmentWithZIO[HttpClient](_.get.patch(url, body, headers, version, timeout))
 
   def delete(
     url: URL,

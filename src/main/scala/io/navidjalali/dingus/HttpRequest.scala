@@ -92,6 +92,32 @@ object HttpRequest {
     }
   }
 
+  private[this] final case class PATCH(
+    url: URL,
+    body: RequestBody,
+    headers: Set[Header],
+    version: HttpVersion,
+    timeout: FiniteDuration
+  ) extends HttpRequest {
+    override val method: HttpMethod = HttpMethod.PATCH
+
+    override def asJava: UIO[JHttpRequest] = body.toJava.map { requestBody =>
+      var builder =
+        JHttpRequest
+          .newBuilder()
+          .uri(url.asJava)
+          .method("PATCH", requestBody)
+          .timeout(timeout.toJava)
+          .version(version.asJava)
+
+      if (headers.nonEmpty) {
+        builder = builder.headers(headers.toArray.flatMap(header => Array(header.name, header.value)): _*)
+      }
+
+      builder.build()
+    }
+  }
+
   private[this] final case class DELETE(
     url: URL,
     headers: Set[Header],
@@ -192,6 +218,15 @@ object HttpRequest {
     timeout: FiniteDuration = 10.seconds
   ): HttpRequest =
     PUT(url, body, headers, version, timeout)
+
+  def patch(
+    url: URL,
+    body: RequestBody,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ): HttpRequest =
+    PATCH(url, body, headers, version, timeout)
 
   def delete(
     url: URL,
