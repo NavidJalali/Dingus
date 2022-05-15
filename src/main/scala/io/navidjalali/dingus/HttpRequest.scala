@@ -130,7 +130,7 @@ object HttpRequest {
         JHttpRequest
           .newBuilder()
           .uri(url.asJava)
-          .HEAD()
+          .method("HEAD", BodyPublishers.noBody())
           .timeout(timeout.toJava)
           .version(version.asJava)
 
