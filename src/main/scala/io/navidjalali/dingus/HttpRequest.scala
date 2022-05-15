@@ -2,6 +2,7 @@ package io.navidjalali.dingus
 
 import zio.{UIO, ZIO}
 
+import java.net.http.HttpRequest.BodyPublishers
 import java.net.http.{HttpRequest => JHttpRequest}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.jdk.DurationConverters.ScalaDurationOps
@@ -90,4 +91,80 @@ object HttpRequest {
       builder.build()
     }
   }
+
+  final case class DELETE(
+    url: URL,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ) extends HttpRequest {
+    override val method: HttpMethod = HttpMethod.DELETE
+
+    override def asJava: UIO[JHttpRequest] = ZIO.succeed({
+      var builder =
+        JHttpRequest
+          .newBuilder()
+          .uri(url.asJava)
+          .DELETE()
+          .timeout(timeout.toJava)
+          .version(version.asJava)
+
+      if (headers.nonEmpty) {
+        builder = builder.headers(headers.toArray.flatMap(header => Array(header.name, header.value)): _*)
+      }
+
+      builder.build()
+    })
+  }
+
+  final case class HEAD(
+    url: URL,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ) extends HttpRequest {
+    override val method: HttpMethod = HttpMethod.HEAD
+
+    override def asJava: UIO[JHttpRequest] = ZIO.succeed({
+      var builder =
+        JHttpRequest
+          .newBuilder()
+          .uri(url.asJava)
+          .HEAD()
+          .timeout(timeout.toJava)
+          .version(version.asJava)
+
+      if (headers.nonEmpty) {
+        builder = builder.headers(headers.toArray.flatMap(header => Array(header.name, header.value)): _*)
+      }
+
+      builder.build()
+    })
+  }
+
+  final case class OPTIONS(
+    url: URL,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ) extends HttpRequest {
+    override val method: HttpMethod = HttpMethod.OPTIONS
+
+    override def asJava: UIO[JHttpRequest] = ZIO.succeed({
+      var builder =
+        JHttpRequest
+          .newBuilder()
+          .uri(url.asJava)
+          .timeout(timeout.toJava)
+          .version(version.asJava)
+          .method("OPTIONS", BodyPublishers.noBody())
+
+      if (headers.nonEmpty) {
+        builder = builder.headers(headers.toArray.flatMap(header => Array(header.name, header.value)): _*)
+      }
+
+      builder.build()
+    })
+  }
+
 }

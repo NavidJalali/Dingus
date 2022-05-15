@@ -177,7 +177,7 @@ object ReactiveAdapters {
 
           override def onError(e: Throwable): Unit =
             if (e == null) {
-              val e = new NullPointerException("t was null in onError")
+              val e = new NullPointerException("throwable was null in onError")
               runtime.unsafeRunSync(q.offer(Exit.fail(Some(e))))
               throw e
             } else {
