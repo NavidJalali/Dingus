@@ -15,4 +15,9 @@ object URL {
     }
 
   def unsafeFromString(url: String): URL = URL(url).fold(e => throw e, identity)
+
+  implicit final class StringSyntax(private val self: String) extends AnyVal {
+    def toUrl: Either[IllegalArgumentException, URL] = apply(self)
+    def toUrlUnsafe: URL                             = unsafeFromString(self)
+  }
 }
