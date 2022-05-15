@@ -10,7 +10,7 @@ import java.util.concurrent.Flow.{Publisher, Subscriber, Subscription}
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
-object ZStreamBody {
+object ReactiveConvertors {
   def toStream(publisher: Publisher[util.List[ByteBuffer]], bufferSize: Int): ZStream[Any, Throwable, Byte] = {
     val pullOrFail =
       for {

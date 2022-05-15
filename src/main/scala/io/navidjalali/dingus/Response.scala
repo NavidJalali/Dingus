@@ -13,7 +13,7 @@ final case class Response(
   headers: Set[Header],
   data: Flow.Publisher[java.util.List[ByteBuffer]]
 ) {
-  def byteStream: ZStream[Any, Throwable, Byte] = ZStreamBody.toStream(data, 128)
+  def byteStream: ZStream[Any, Throwable, Byte] = ReactiveConvertors.toStream(data, 128)
   def bodyAsString: ZIO[Any, Throwable, String] = byteStream.via(ZPipeline.utf8Decode).mkString
 }
 
