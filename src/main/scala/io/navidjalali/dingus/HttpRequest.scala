@@ -15,11 +15,11 @@ sealed trait HttpRequest {
 }
 
 object HttpRequest {
-  final case class GET(
+  private[this] final case class GET(
     url: URL,
-    headers: Set[Header] = Set.empty,
-    version: HttpVersion = HttpVersion.`1.1`,
-    timeout: FiniteDuration = 10.seconds
+    headers: Set[Header],
+    version: HttpVersion,
+    timeout: FiniteDuration
   ) extends HttpRequest {
     override val method: HttpMethod = HttpMethod.GET
 
@@ -40,12 +40,12 @@ object HttpRequest {
     })
   }
 
-  final case class POST(
+  private[this] final case class POST(
     url: URL,
     body: RequestBody,
-    headers: Set[Header] = Set.empty,
-    version: HttpVersion = HttpVersion.`1.1`,
-    timeout: FiniteDuration = 10.seconds
+    headers: Set[Header],
+    version: HttpVersion,
+    timeout: FiniteDuration
   ) extends HttpRequest {
     override val method: HttpMethod = HttpMethod.POST
 
@@ -66,12 +66,12 @@ object HttpRequest {
     }
   }
 
-  final case class PUT(
+  private[this] final case class PUT(
     url: URL,
     body: RequestBody,
-    headers: Set[Header] = Set.empty,
-    version: HttpVersion = HttpVersion.`1.1`,
-    timeout: FiniteDuration = 10.seconds
+    headers: Set[Header],
+    version: HttpVersion,
+    timeout: FiniteDuration
   ) extends HttpRequest {
     override val method: HttpMethod = HttpMethod.PUT
 
@@ -92,11 +92,11 @@ object HttpRequest {
     }
   }
 
-  final case class DELETE(
+  private[this] final case class DELETE(
     url: URL,
-    headers: Set[Header] = Set.empty,
-    version: HttpVersion = HttpVersion.`1.1`,
-    timeout: FiniteDuration = 10.seconds
+    headers: Set[Header],
+    version: HttpVersion,
+    timeout: FiniteDuration
   ) extends HttpRequest {
     override val method: HttpMethod = HttpMethod.DELETE
 
@@ -117,11 +117,11 @@ object HttpRequest {
     })
   }
 
-  final case class HEAD(
+  private[this] final case class HEAD(
     url: URL,
-    headers: Set[Header] = Set.empty,
-    version: HttpVersion = HttpVersion.`1.1`,
-    timeout: FiniteDuration = 10.seconds
+    headers: Set[Header],
+    version: HttpVersion,
+    timeout: FiniteDuration
   ) extends HttpRequest {
     override val method: HttpMethod = HttpMethod.HEAD
 
@@ -142,11 +142,11 @@ object HttpRequest {
     })
   }
 
-  final case class OPTIONS(
+  private[this] final case class OPTIONS(
     url: URL,
-    headers: Set[Header] = Set.empty,
-    version: HttpVersion = HttpVersion.`1.1`,
-    timeout: FiniteDuration = 10.seconds
+    headers: Set[Header],
+    version: HttpVersion,
+    timeout: FiniteDuration
   ) extends HttpRequest {
     override val method: HttpMethod = HttpMethod.OPTIONS
 
@@ -167,4 +167,53 @@ object HttpRequest {
     })
   }
 
+  def get(
+    url: URL,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ): HttpRequest =
+    GET(url, headers, version, timeout)
+
+  def post(
+    url: URL,
+    body: RequestBody,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ): HttpRequest =
+    POST(url, body, headers, version, timeout)
+
+  def put(
+    url: URL,
+    body: RequestBody,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ): HttpRequest =
+    PUT(url, body, headers, version, timeout)
+
+  def delete(
+    url: URL,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ): HttpRequest =
+    DELETE(url, headers, version, timeout)
+
+  def head(
+    url: URL,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ): HttpRequest =
+    HEAD(url, headers, version, timeout)
+
+  def options(
+    url: URL,
+    headers: Set[Header] = Set.empty,
+    version: HttpVersion = HttpVersion.`1.1`,
+    timeout: FiniteDuration = 10.seconds
+  ): HttpRequest =
+    OPTIONS(url, headers, version, timeout)
 }

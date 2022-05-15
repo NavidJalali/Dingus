@@ -10,10 +10,8 @@ object Main extends ZIOAppDefault {
 
   override def run: ZIO[Any with ZIOAppArgs with Scope, Any, Any] =
     HttpClient
-      .request(
-        HttpRequest.GET(
-          URL.unsafeFromString("https://jsonplaceholder.typicode.com/posts")
-        )
+      .get(
+        URL.unsafeFromString("https://jsonplaceholder.typicode.com/posts")
       )
       .tap(resp => Console.printLine(resp.statusCode))
       .flatMap(_.bodyAsString)
