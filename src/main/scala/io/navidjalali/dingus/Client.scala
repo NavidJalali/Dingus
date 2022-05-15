@@ -1,32 +1,55 @@
 package io.navidjalali.dingus
 
-import zio.ZIO
+import zio.{Semaphore, ZIO, ZLayer}
 
+import java.io.UncheckedIOException
 import java.net.http.{HttpClient, HttpResponse}
-import java.time.Duration
-import javax.net.ssl.SSLContext
+import javax.net.ssl.{SSLContext, SSLParameters}
 
-sealed trait Client {
+sealed trait Client { self =>
+
+  val semaphore: Semaphore
+
   def request(request: Request): ZIO[Any, Throwable, Response] =
-    ZIO
-      .fromCompletableFuture(Client.default.asJava.sendAsync(request.asJava, HttpResponse.BodyHandlers.ofLines()))
-      .map(Response.fromJava)
+    semaphore.withPermit(
+      ZIO
+        .fromCompletableFuture(
+          self.asJava.sendAsync(
+            request.asJava,
+            HttpResponse.BodyHandlers.ofPublisher()
+          )
+        )
+        .map(Response.fromJava)
+    )
 
   val asJava: HttpClient
 }
 
 object Client {
-  lazy val default: Client = new Client {
-    override val asJava: HttpClient =
-      HttpClient
-        .newBuilder()
-        .followRedirects(HttpClient.Redirect.ALWAYS)
-        .connectTimeout(Duration.ofSeconds(60))
-        .sslContext(SSLContext.getDefault)
-        .sslParameters(SSLContext.getDefault.getDefaultSSLParameters)
-        .executor(zio.Runtime.default.executor.asJava)
-        .build()
-  }
 
-  // Todo: make a dsl for creating clients
+  def request(request: Request): ZIO[Client, Throwable, Response] =
+    ZIO.environmentWithZIO[Client](_.get.request(request))
+
+  val live =
+    ZLayer.fromZIO {
+      for {
+        config  <- ZIO.environmentWith[ClientConfiguration](_.get)
+        permits <- Semaphore.make(config.poolSize)
+        client <- ZIO.attempt {
+                    new Client {
+                      override val semaphore: Semaphore = permits
+                      override val asJava: HttpClient =
+                        HttpClient
+                          .newBuilder()
+                          .sslContext(SSLContext.getDefault)
+                          .sslParameters(new SSLParameters)
+                          .executor(config.executor)
+                          .connectTimeout(config.connectionTimeout)
+                          .build()
+                    }
+                  }.refineToOrDie[UncheckedIOException]
+      } yield client
+    }
+
+  val default = ClientConfiguration.default >>> live
 }

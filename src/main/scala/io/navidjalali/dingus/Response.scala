@@ -1,17 +1,24 @@
 package io.navidjalali.dingus
 
 import zio.ZIO
-import zio.stream.ZStream
+import zio.stream.{ZPipeline, ZStream}
 
 import java.net.http.HttpResponse
+import java.nio.ByteBuffer
+import java.util.concurrent.Flow
 import scala.jdk.CollectionConverters.{CollectionHasAsScala, MapHasAsScala}
 
-final case class Response(statusCode: StatusCode, headers: Set[Header], data: ZStream[Any, Throwable, String]) {
-  def bodyAsString: ZIO[Any, Throwable, String] = data.runFold("")(_ + _)
+final case class Response(
+  statusCode: StatusCode,
+  headers: Set[Header],
+  data: Flow.Publisher[java.util.List[ByteBuffer]]
+) {
+  def byteStream: ZStream[Any, Throwable, Byte] = ZStreamBody.toStream(data, 128)
+  def bodyAsString: ZIO[Any, Throwable, String] = byteStream.via(ZPipeline.utf8Decode).mkString
 }
 
 object Response {
-  def fromJava(javaResponse: HttpResponse[java.util.stream.Stream[String]]): Response =
+  def fromJava(javaResponse: HttpResponse[Flow.Publisher[java.util.List[ByteBuffer]]]): Response =
     Response(
       StatusCode(javaResponse.statusCode)
         .getOrElse(throw new IllegalArgumentException(s"Invalid status code ${javaResponse.statusCode}")),
@@ -23,6 +30,6 @@ object Response {
           values.asScala.map(value => Header(key, value))
         }
         .toSet,
-      ZStream.fromJavaStream(javaResponse.body)
+      javaResponse.body()
     )
 }
