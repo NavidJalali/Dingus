@@ -11,7 +11,6 @@ sealed trait RequestBody {
 }
 
 object RequestBody {
-
   private[this] final case class Pure(publisher: BodyPublisher) extends RequestBody {
     override def toJava: UIO[BodyPublisher] = ZIO.succeed(publisher)
   }
@@ -23,23 +22,30 @@ object RequestBody {
         .map(BodyPublishers.fromPublisher)
   }
 
-  def fromString(body: String): RequestBody =
+  def fromString(body: => String): RequestBody =
     Pure(BodyPublishers.ofString(body))
 
-  def fromArray(body: Array[Byte]): RequestBody =
+  def fromArray(body: => Array[Byte]): RequestBody =
     Pure(BodyPublishers.ofByteArray(body))
 
-  def fromChunk(chunk: Chunk[Byte]): RequestBody = {
+  def fromChunk(chunk: => Chunk[Byte]): RequestBody =
     Pure(BodyPublishers.ofByteArray(chunk.toArray))
-  }
 
-  def fromIterable(body: Iterable[Byte]): RequestBody = {
+  def fromIterable(body: => Iterable[Byte]): RequestBody =
     Pure(BodyPublishers.ofByteArray(body.toArray))
-  }
 
-  def fromBodyPublisher(body: BodyPublisher): RequestBody =
+  def fromBodyPublisher(body: => BodyPublisher): RequestBody =
     Pure(body)
 
-  def fromStream(body: ZStream[Any, Throwable, Byte]): RequestBody =
+  def fromStream(body: => ZStream[Any, Throwable, Byte]): RequestBody =
     Stream(body)
+
+  def fromFile(file: => java.io.File, chunkSize: => Int = ZStream.DefaultChunkSize): RequestBody =
+    fromStream(ZStream.fromFile(file, chunkSize))
+
+  def fromFileName(path: => String, chunkSize: => Int = ZStream.DefaultChunkSize): RequestBody =
+    fromStream(ZStream.fromFileName(path, chunkSize))
+
+  def fromFileURI(uri: => java.net.URI, chunkSize: => Int = ZStream.DefaultChunkSize): RequestBody =
+    fromStream(ZStream.fromFileURI(uri, chunkSize))
 }

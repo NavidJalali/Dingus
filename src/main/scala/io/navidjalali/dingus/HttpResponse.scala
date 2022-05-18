@@ -13,11 +13,15 @@ final case class HttpResponse(
   headers: Set[Header],
   data: Flow.Publisher[java.util.List[ByteBuffer]]
 ) {
-  def byteStream: ZStream[Any, Throwable, Byte] = ReactiveAdapters.toStream(data, 128)
-  def bodyAsString: ZIO[Any, Throwable, String] = byteStream.via(ZPipeline.utf8Decode).mkString
+  def byteStream(bufferSize: => Int = HttpResponse.defaultBufferSize): ZStream[Any, Throwable, Byte] =
+    ReactiveAdapters.toStream(data, bufferSize)
+  def bodyAsString: ZIO[Any, Throwable, String] = byteStream().via(ZPipeline.utf8Decode).mkString
 }
 
 object HttpResponse {
+
+  final val defaultBufferSize: Int = 4096
+
   def fromJava(javaResponse: JHttpResponse[Flow.Publisher[java.util.List[ByteBuffer]]]): HttpResponse =
     HttpResponse(
       StatusCode(javaResponse.statusCode)
