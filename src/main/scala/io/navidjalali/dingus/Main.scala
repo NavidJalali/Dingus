@@ -4,8 +4,6 @@ import zio._
 import zio.Console
 import zio.stream.ZStream
 
-import java.net.URI
-
 object Main extends ZIOAppDefault {
 
   val env = ZEnv.live ++ HttpClientConfiguration.default >>> HttpClient.live
@@ -54,9 +52,7 @@ object Main extends ZIOAppDefault {
       _        <- Console.printLine(s"Body: $body")
     } yield ()
 
-  override def run: ZIO[Any with ZIOAppArgs with Scope, Any, Any] =
-    ZIO.attempt {
-      val uri = URL("google.com/raw/dog/?dick=zio")
-      println(uri.host)
-    }
+  override def run: ZIO[Any with ZIOAppArgs with Scope, Any, Any] = {
+    app(get).tap(Console.printLine(_)).provide(env)
+  }
 }
